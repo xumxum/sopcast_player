@@ -1,4 +1,4 @@
 #!/usr/bin/perl
 
-sleep 10;
+sleep 20;
 exit 0;

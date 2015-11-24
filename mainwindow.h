@@ -4,6 +4,17 @@
 #include <QMainWindow>
 #include <QVector>
 class QProcess;
+class QTimer;
+
+
+struct PlayEntry
+{
+    QString m_Name;
+    QString m_Soplink;
+
+    QProcess *m_SopCastProces;
+    int m_OutboundPort;
+};
 
 namespace Ui {
 class MainWindow;
@@ -25,10 +36,14 @@ private slots:
 private:
     Ui::MainWindow *ui;
 
-    QVector<QProcess *> m_SopCastProcesses;
+    //QVector<QProcess *> m_SopCastProcesses;
+
+    QVector<PlayEntry> m_PlayEntries;
+
+    QTimer* m_Timer;
     //QProcess *m_myProcess;
 
-
+    void getStatuses(int connectionId);
 
 
 };
