@@ -12,12 +12,14 @@
 #include "QMessageBox"
 
 
+
 enum TableColumns
 {
     colName,
     colSopLink,
     colStatus,
     colBuffer,
+    colPortNr,
     colPlay,
     colDelete,
 
@@ -32,18 +34,20 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     this->setWindowTitle("SopCast Player");
 
-    m_Timer = new QTimer(this);
-    connect(m_Timer, SIGNAL(timeout()), this, SLOT(refreshStatus()));
-    m_Timer->start(1000);
+    m_NextPortNr = 9500;
 
-    ui->tableInfo->setColumnCount(6);
+    ui->tableInfo->setColumnCount(col_TOTAL);
     ui->tableInfo->setHorizontalHeaderItem(colName, new QTableWidgetItem(QString("Name")));
     ui->tableInfo->setHorizontalHeaderItem(colSopLink, new QTableWidgetItem(QString("Address")));
     ui->tableInfo->setHorizontalHeaderItem(colStatus, new QTableWidgetItem(QString("Status")));
     ui->tableInfo->setHorizontalHeaderItem(colBuffer, new QTableWidgetItem(QString("Buffer")));
+    ui->tableInfo->setHorizontalHeaderItem(colPortNr, new QTableWidgetItem(QString("Port")));
     ui->tableInfo->setHorizontalHeaderItem(colPlay, new QTableWidgetItem(QString("Play")));
     ui->tableInfo->setHorizontalHeaderItem(colDelete, new QTableWidgetItem(QString("Delete")));
 
+    m_Timer = new QTimer(this);
+    connect(m_Timer, SIGNAL(timeout()), this, SLOT(refreshStatus()));
+    m_Timer->start(1000);
 }
 
 MainWindow::~MainWindow()
@@ -53,7 +57,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pushButton_clicked()
 {
-    QString        program = "/work/test/sopcast_player/sopcast_player/sp.pl";
+    //QString        program = "/work/test/sopcast_player/sopcast_player/sp.pl";
+    QString program = QString("sp-sc %1 %2 %3").arg(ui->text_soplink->text(),
+                          QString::number(m_NextPortNr+1),QString::number(m_NextPortNr));
+
     QProcess* newSopcastProcess = new QProcess(this);
 
     newSopcastProcess->start(program);
@@ -63,14 +70,15 @@ void MainWindow::on_pushButton_clicked()
     //m_SopCastProcesses.append( newSopcastProcess );
     PlayEntry entry;
     entry.m_Soplink = ui->text_soplink->text();
+    entry.m_Name = ui->textName->text();
     entry.m_SopCastProces = newSopcastProcess;
+    entry.m_OutboundPort = m_NextPortNr;
 
     m_PlayEntries.append(entry);
 
-    refreshStatus();
+    m_NextPortNr += 2;//increment by 2
 
-    //just to test the basic socket stuff...
-    getStatuses(0);
+    refreshStatus();
 }
 
 void MainWindow::on_sopcast_exited(int exitStatus)
@@ -97,40 +105,29 @@ void MainWindow::on_sopcast_exited(int exitStatus)
     }
 #endif
 
+    for(int i=0; i<m_PlayEntries.size(); i++)
+    {
+        if (m_PlayEntries.at(i).m_SopCastProces->state() == QProcess::NotRunning)
+        {
+            //restart it?...
+            m_PlayEntries.at(i).m_SopCastProces->waitForFinished();
+
+            QString program = QString("sp-sc %1 %2 %3").arg( m_PlayEntries.at(i).m_Soplink,
+                                  QString::number(m_PlayEntries.at(i).m_OutboundPort+1),QString::number(m_PlayEntries.at(i).m_OutboundPort));
+
+            m_PlayEntries.at(i).m_SopCastProces->start(program);
+        }
+    }
+
     refreshStatus();
 }
 
 
 void MainWindow::refreshStatus()
 {
-#if 0
-    QString statusAll;
 
-    for(int i=0; i<m_SopCastProcesses.size(); i++)
-    {
-        QString status = QString::number(i) + QString(" -> ") + QString::number(m_SopCastProcesses.at(i)->pid());
-        switch (m_SopCastProcesses.at(i)->state())
-        {
-        status += QString("  ");
-        case QProcess::NotRunning:
-            status += QString("Not running");
-            break;
-        case QProcess::Starting:
-            status += QString("Starting");
-            break;
-        case QProcess::Running:
-            status += QString("Running");
-            break;
-        default:
-            break;
-        }
-
-        status += "\n";
-        statusAll += status;
-    }
-
-    //ui->label->setText(statusAll);
-    #endif
+    //run this in a different thread
+    refreshBufferStatusses();
 
     //cleanup
     ui->tableInfo->setRowCount(0);
@@ -145,10 +142,11 @@ void MainWindow::refreshStatus()
         QTableWidgetItem *itemName= new QTableWidgetItem();
         QTableWidgetItem *itemSopLink = new QTableWidgetItem();
         QTableWidgetItem *itemStatus = new QTableWidgetItem();
-        QTableWidgetItem *itemBuffer = new QTableWidgetItem();
+        QTableWidgetItem *itemPort = new QTableWidgetItem();
         QTableWidgetItem *itemPlay = new QTableWidgetItem();
         QTableWidgetItem *itemDelete = new QTableWidgetItem();
 
+        itemName->setText(m_PlayEntries.at(i).m_Name);
         itemSopLink->setText(m_PlayEntries.at(i).m_Soplink);
 
         QProcess* processSopCast = m_PlayEntries.at(i).m_SopCastProces;
@@ -171,8 +169,10 @@ void MainWindow::refreshStatus()
         }
 
         QProgressBar *pgbar = new QProgressBar();
-        pgbar->setValue(50);
+        pgbar->setValue( m_PlayEntries.at(i).m_BuffLevel );
         pgbar->setMaximum(100);
+
+        itemPort->setText( QString::number(m_PlayEntries.at(i).m_OutboundPort));
 
         //changing color, works
 #if 0
@@ -183,9 +183,8 @@ void MainWindow::refreshStatus()
         ui->tableInfo->setItem(i, colName , itemName);
         ui->tableInfo->setItem(i, colSopLink , itemSopLink);
         ui->tableInfo->setItem(i, colStatus , itemStatus);
-        //ui->tableInfo->setItem(i, colBuffer , itemBuffer);
         ui->tableInfo->setCellWidget(i, colBuffer , pgbar);
-
+        ui->tableInfo->setItem(i, colPortNr , itemPort);
         ui->tableInfo->setItem(i, colPlay , itemPlay);
         ui->tableInfo->setItem(i, colDelete , itemDelete);
 
@@ -193,26 +192,40 @@ void MainWindow::refreshStatus()
 #endif
 }
 
+void MainWindow::refreshBufferStatusses()
+{
+    for(int i=0; i<m_PlayEntries.size(); i++)
+    {
+        if (m_PlayEntries.at(i).m_SopCastProces->state() == QProcess::Running)
+        {
+            updateBuffStatus(i);
+        }
+    }
+}
 
-void MainWindow::getStatuses(int connectionId)
+void MainWindow::updateBuffStatus(int connectionId)
 {
     QTcpSocket sock;
-    sock.connectToHost("127.0.0.1",12000);
+    sock.connectToHost("127.0.0.1", m_PlayEntries.at(connectionId).m_OutboundPort);
     if (sock.waitForConnected(500))
     {
         //connected, send status\n
-        sock.write("\nstatus\ns\n");
+        sock.write("state\ns\n");
         sock.waitForBytesWritten();
+        sock.write("state\ns\n");
+        sock.waitForBytesWritten();
+
         //QThread::msleep(50);
 
-        sock.waitForReadyRead(50);
+        sock.waitForReadyRead(1500);
         QByteArray replyBytes = sock.readLine();
         QString reply(replyBytes);
 
         QStringList stats = reply.split(" ");
         if (stats.size()>0)
         {
-            QMessageBox::warning(0,"Reply", stats[0]);
+            //QMessageBox::warning(0,"Reply", stats[0]);
+            m_PlayEntries[connectionId].m_BuffLevel = stats[0].toInt();
         }
 
         sock.disconnectFromHost();

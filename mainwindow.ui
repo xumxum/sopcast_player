@@ -30,9 +30,9 @@
    <widget class="QLineEdit" name="text_soplink">
     <property name="geometry">
      <rect>
-      <x>80</x>
+      <x>250</x>
       <y>10</y>
-      <width>541</width>
+      <width>491</width>
       <height>28</height>
      </rect>
     </property>
@@ -44,6 +44,16 @@
       <y>50</y>
       <width>731</width>
       <height>371</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="textName">
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>10</y>
+      <width>151</width>
+      <height>27</height>
      </rect>
     </property>
    </widget>

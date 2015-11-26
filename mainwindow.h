@@ -9,11 +9,16 @@ class QTimer;
 
 struct PlayEntry
 {
+public:
+    PlayEntry() : m_OutboundPort(0), m_BuffLevel(0) {}
+
+
     QString m_Name;
     QString m_Soplink;
 
     QProcess *m_SopCastProces;
     int m_OutboundPort;
+    int m_BuffLevel;
 };
 
 namespace Ui {
@@ -41,9 +46,11 @@ private:
     QVector<PlayEntry> m_PlayEntries;
 
     QTimer* m_Timer;
-    //QProcess *m_myProcess;
 
-    void getStatuses(int connectionId);
+    unsigned m_NextPortNr;
+
+    void updateBuffStatus(int connectionId);
+    void refreshBufferStatusses();
 
 
 };
