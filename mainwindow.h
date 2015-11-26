@@ -41,8 +41,6 @@ private slots:
 private:
     Ui::MainWindow *ui;
 
-    //QVector<QProcess *> m_SopCastProcesses;
-
     QVector<PlayEntry> m_PlayEntries;
 
     QTimer* m_Timer;

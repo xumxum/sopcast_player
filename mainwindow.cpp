@@ -10,8 +10,7 @@
 #include "QTcpSocket"
 #include "QThread"
 #include "QMessageBox"
-
-
+#include "QIcon"
 
 enum TableColumns
 {
@@ -180,6 +179,7 @@ void MainWindow::refreshStatus()
         pgbar->setStyleSheet(danger);
 #endif
 
+        itemDelete->setIcon(QIcon(":/icons/delete.png"));
         ui->tableInfo->setItem(i, colName , itemName);
         ui->tableInfo->setItem(i, colSopLink , itemSopLink);
         ui->tableInfo->setItem(i, colStatus , itemStatus);

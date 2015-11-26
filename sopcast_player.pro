@@ -21,3 +21,6 @@ FORMS    += mainwindow.ui
 
 OTHER_FILES += \
     TODO
+
+RESOURCES += \
+    resources.qrc
