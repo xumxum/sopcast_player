@@ -1,0 +1,13 @@
+/CMakeFiles/
+
+/CMakeCache.txt
+*.o
+/Makefile
+/moc_mainwindow.cpp
+/qrc_resources.cpp
+/sopcast_player
+/sopcast_player.pro.user
+/sopcast_player.pro.user.18
+/sopcast_player_automoc.cpp
+/ui_mainwindow.h
+/cmake_install.cmake
