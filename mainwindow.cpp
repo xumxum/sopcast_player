@@ -60,13 +60,14 @@ void MainWindow::on_pushButton_clicked()
     QString program = QString("sp-sc %1 %2 %3").arg(ui->text_soplink->text(),
                           QString::number(m_NextPortNr+1),QString::number(m_NextPortNr));
 
+    //1. Start the process
     QProcess* newSopcastProcess = new QProcess(this);
 
     newSopcastProcess->start(program);
     connect(newSopcastProcess, SIGNAL(finished(int)), this, SLOT(on_sopcast_exited(int)));
     connect(newSopcastProcess, SIGNAL(stateChanged(QProcess::ProcessState)), this, SLOT(refreshStatus()));
 
-    //m_SopCastProcesses.append( newSopcastProcess );
+    //2. Save it in our list
     PlayEntry entry;
     entry.m_Soplink = ui->text_soplink->text();
     entry.m_Name = ui->textName->text();
@@ -74,6 +75,48 @@ void MainWindow::on_pushButton_clicked()
     entry.m_OutboundPort = m_NextPortNr;
 
     m_PlayEntries.append(entry);
+
+
+    //3. Add new entry in the table
+    int row = ui->tableInfo->rowCount();
+    ui->tableInfo->insertRow(row);
+
+
+    QTableWidgetItem *itemName= new QTableWidgetItem();
+    QTableWidgetItem *itemSopLink = new QTableWidgetItem();
+    QTableWidgetItem *itemStatus = new QTableWidgetItem();
+    QTableWidgetItem *itemPort = new QTableWidgetItem();
+    QTableWidgetItem *itemPlay = new QTableWidgetItem();
+
+    itemName->setText(entry.m_Name);
+    itemSopLink->setText(entry.m_Soplink);
+
+    itemName->setText("");
+    itemSopLink->setText("sop://");
+    itemStatus->setText( QString("Starting") );
+
+    QProgressBar *pgbar = new QProgressBar();
+    pgbar->setValue(0);
+    pgbar->setMaximum(100);
+
+    itemPort->setText( QString::number(m_NextPortNr) );
+
+    QIcon* icon = new QIcon(":/icons/delete.png");
+    //itemDelete->setIcon(*icon);
+    QPushButton* button = new QPushButton("Delete", ui->tableInfo);
+    button->setIcon(*icon);
+
+    connect(button, SIGNAL(clicked()), this, SLOT(cellDeleteClicked()));
+    m_DeleteMap.insert(button, row);
+
+    ui->tableInfo->setItem(row, colName , itemName);
+    ui->tableInfo->setItem(row, colSopLink , itemSopLink);
+    ui->tableInfo->setItem(row, colStatus , itemStatus);
+    ui->tableInfo->setCellWidget(row, colBuffer , pgbar);
+    ui->tableInfo->setItem(row, colPortNr , itemPort);
+    ui->tableInfo->setItem(row, colPlay , itemPlay);
+    ui->tableInfo->setCellWidget(row, colDelete , button);
+
 
     m_NextPortNr += 2;//increment by 2
 
@@ -128,29 +171,14 @@ void MainWindow::refreshStatus()
     //run this in a different thread
     refreshBufferStatusses();
 
-    //cleanup
-    ui->tableInfo->setRowCount(0);
-
+    //ui->tableInfo->setShowGrid(false);
 #if 1
     for(int i=0; i<m_PlayEntries.size(); i++)
     {
-        int row = ui->tableInfo->rowCount();
-        ui->tableInfo->insertRow(row);
-
-
-        QTableWidgetItem *itemName= new QTableWidgetItem();
-        QTableWidgetItem *itemSopLink = new QTableWidgetItem();
-        QTableWidgetItem *itemStatus = new QTableWidgetItem();
-        QTableWidgetItem *itemPort = new QTableWidgetItem();
-        QTableWidgetItem *itemPlay = new QTableWidgetItem();
-        QTableWidgetItem *itemDelete = new QTableWidgetItem();
-
-        itemName->setText(m_PlayEntries.at(i).m_Name);
-        itemSopLink->setText(m_PlayEntries.at(i).m_Soplink);
-
         QProcess* processSopCast = m_PlayEntries.at(i).m_SopCastProces;
         if (processSopCast)
         {
+            QTableWidgetItem* itemStatus = ui->tableInfo->item(i, colStatus);
             switch (processSopCast->state())
             {
             case QProcess::NotRunning:
@@ -167,26 +195,16 @@ void MainWindow::refreshStatus()
             }
         }
 
-        QProgressBar *pgbar = new QProgressBar();
-        pgbar->setValue( m_PlayEntries.at(i).m_BuffLevel );
-        pgbar->setMaximum(100);
+        QProgressBar *pgbar = dynamic_cast<QProgressBar*>(ui->tableInfo->cellWidget(i, colBuffer));
+        //if (pgbar) pgbar->setValue( m_PlayEntries.at(i).m_BuffLevel );
 
-        itemPort->setText( QString::number(m_PlayEntries.at(i).m_OutboundPort));
+        if (pgbar) pgbar->setValue( (pgbar->value() + 1) %101);
 
         //changing color, works
 #if 0
         QString danger = "QProgressBar::chunk {background: QLinearGradient( x1: 0, y1: 0, x2: 1, y2: 0,stop: 0 #FF0350,stop: 0.4999 #FF0020,stop: 0.5 #FF0019,stop: 1 #FF0000 );border-bottom-right-radius: 5px;border-bottom-left-radius: 5px;border: .px solid black;}";
         pgbar->setStyleSheet(danger);
 #endif
-
-        itemDelete->setIcon(QIcon(":/icons/delete.png"));
-        ui->tableInfo->setItem(i, colName , itemName);
-        ui->tableInfo->setItem(i, colSopLink , itemSopLink);
-        ui->tableInfo->setItem(i, colStatus , itemStatus);
-        ui->tableInfo->setCellWidget(i, colBuffer , pgbar);
-        ui->tableInfo->setItem(i, colPortNr , itemPort);
-        ui->tableInfo->setItem(i, colPlay , itemPlay);
-        ui->tableInfo->setItem(i, colDelete , itemDelete);
 
     }
 #endif
@@ -231,3 +249,16 @@ void MainWindow::updateBuffStatus(int connectionId)
         sock.disconnectFromHost();
     }
 }
+
+void MainWindow::cellDeleteClicked()
+{
+#if 1
+    if (m_DeleteMap.contains(sender()))
+        QMessageBox::warning(0,"Delete", QString::number(m_DeleteMap[sender()]));
+#endif
+#if 0
+    if (m_DeleteMap.contains(sender()))
+        QMessageBox::warning(0,"Delete", QString::number(pgbar->value()));
+#endif
+}
+

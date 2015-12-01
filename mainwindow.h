@@ -3,9 +3,12 @@
 
 #include <QMainWindow>
 #include <QVector>
+#include  <QSignalMapper>
+#include <QHash>
+
 class QProcess;
 class QTimer;
-
+class QObject;
 
 struct PlayEntry
 {
@@ -38,6 +41,7 @@ private slots:
     void on_sopcast_exited(int exitStatus);
     void refreshStatus();
 
+    void cellDeleteClicked();
 private:
     Ui::MainWindow *ui;
 
@@ -47,8 +51,14 @@ private:
 
     unsigned m_NextPortNr;
 
+    //Maps to map button to sopchan..
+    QHash <QObject*, int> m_DeleteMap;
+    QHash <QObject*, int> m_PlayMap;
+
     void updateBuffStatus(int connectionId);
     void refreshBufferStatusses();
+
+
 
 
 };
