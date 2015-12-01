@@ -256,9 +256,11 @@ void MainWindow::cellDeleteClicked()
     if (m_DeleteMap.contains(sender()))
         QMessageBox::warning(0,"Delete", QString::number(m_DeleteMap[sender()]));
 #endif
-#if 0
-    if (m_DeleteMap.contains(sender()))
-        QMessageBox::warning(0,"Delete", QString::number(pgbar->value()));
-#endif
+    int index = m_DeleteMap[sender()];
+    ui->tableInfo->removeRow(index);
+    m_PlayEntries.remove(index);
+    m_DeleteMap.remove(sender());
+
+    //need to refresh the hashmaps, or don't use index but some other key...
 }
 
