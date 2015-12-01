@@ -44,6 +44,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->tableInfo->setHorizontalHeaderItem(colPlay, new QTableWidgetItem(QString("Play")));
     ui->tableInfo->setHorizontalHeaderItem(colDelete, new QTableWidgetItem(QString("Delete")));
 
+    //ui->textName->setText("Channel Name");
+    ui->text_soplink->setText("sop://");
+
     m_Timer = new QTimer(this);
     connect(m_Timer, SIGNAL(timeout()), this, SLOT(refreshStatus()));
     m_Timer->start(1000);
@@ -74,8 +77,9 @@ void MainWindow::on_pushButton_clicked()
     entry.m_SopCastProces = newSopcastProcess;
     entry.m_OutboundPort = m_NextPortNr;
 
+    m_DataMutex.lock();
     m_PlayEntries.append(entry);
-
+    m_DataMutex.unlock();
 
     //3. Add new entry in the table
     int row = ui->tableInfo->rowCount();
@@ -91,8 +95,8 @@ void MainWindow::on_pushButton_clicked()
     itemName->setText(entry.m_Name);
     itemSopLink->setText(entry.m_Soplink);
 
-    itemName->setText("");
-    itemSopLink->setText("sop://");
+    ui->textName->setText("");
+    ui->text_soplink->setText("sop://");
     itemStatus->setText( QString("Starting") );
 
     QProgressBar *pgbar = new QProgressBar();
@@ -147,6 +151,7 @@ void MainWindow::on_sopcast_exited(int exitStatus)
     }
 #endif
 
+    m_DataMutex.lock();
     for(int i=0; i<m_PlayEntries.size(); i++)
     {
         if (m_PlayEntries.at(i).m_SopCastProces->state() == QProcess::NotRunning)
@@ -160,6 +165,7 @@ void MainWindow::on_sopcast_exited(int exitStatus)
             m_PlayEntries.at(i).m_SopCastProces->start(program);
         }
     }
+    m_DataMutex.unlock();
 
     refreshStatus();
 }
@@ -167,8 +173,9 @@ void MainWindow::on_sopcast_exited(int exitStatus)
 
 void MainWindow::refreshStatus()
 {
+    QMutexLocker ml(&m_DataMutex);
 
-    //run this in a different thread
+    //run this in a different thread?
     refreshBufferStatusses();
 
     //ui->tableInfo->setShowGrid(false);
@@ -196,9 +203,9 @@ void MainWindow::refreshStatus()
         }
 
         QProgressBar *pgbar = dynamic_cast<QProgressBar*>(ui->tableInfo->cellWidget(i, colBuffer));
-        //if (pgbar) pgbar->setValue( m_PlayEntries.at(i).m_BuffLevel );
+        if (pgbar) pgbar->setValue( m_PlayEntries.at(i).m_BuffLevel );
 
-        if (pgbar) pgbar->setValue( (pgbar->value() + 1) %101);
+        //if (pgbar) pgbar->setValue( (pgbar->value() + 1) %101);
 
         //changing color, works
 #if 0
@@ -212,6 +219,7 @@ void MainWindow::refreshStatus()
 
 void MainWindow::refreshBufferStatusses()
 {
+
     for(int i=0; i<m_PlayEntries.size(); i++)
     {
         if (m_PlayEntries.at(i).m_SopCastProces->state() == QProcess::Running)
@@ -252,15 +260,37 @@ void MainWindow::updateBuffStatus(int connectionId)
 
 void MainWindow::cellDeleteClicked()
 {
-#if 1
+#if 0
     if (m_DeleteMap.contains(sender()))
         QMessageBox::warning(0,"Delete", QString::number(m_DeleteMap[sender()]));
 #endif
-    int index = m_DeleteMap[sender()];
-    ui->tableInfo->removeRow(index);
-    m_PlayEntries.remove(index);
-    m_DeleteMap.remove(sender());
 
-    //need to refresh the hashmaps, or don't use index but some other key...
+    QMutexLocker ml(&m_DataMutex);
+
+    for(int index=0; index<m_PlayEntries.size(); index++)
+    {
+        if (ui->tableInfo->cellWidget(index, colDelete) == sender())
+        {
+            //found our button
+            ui->tableInfo->removeRow(index);
+
+            //send term, wait a bit then kill if it's dead
+            //first disable the signals , no need for them anymore for this process
+            disconnect(m_PlayEntries[index].m_SopCastProces, SIGNAL(finished(int)), this, SLOT(on_sopcast_exited(int)));
+            disconnect(m_PlayEntries[index].m_SopCastProces, SIGNAL(stateChanged(QProcess::ProcessState)), this, SLOT(refreshStatus()));
+
+            m_PlayEntries[index].m_SopCastProces->terminate();
+            if (!m_PlayEntries[index].m_SopCastProces->waitForFinished(500))
+                m_PlayEntries[index].m_SopCastProces->kill();
+
+            //do I need this or qt will take care? ..
+            delete m_PlayEntries[index].m_SopCastProces;
+
+            m_PlayEntries.remove(index);
+
+            break;
+        }
+    }
+
 }
 

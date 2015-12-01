@@ -5,6 +5,7 @@
 #include <QVector>
 #include  <QSignalMapper>
 #include <QHash>
+#include <QMutex>
 
 class QProcess;
 class QTimer;
@@ -44,6 +45,8 @@ private slots:
     void cellDeleteClicked();
 private:
     Ui::MainWindow *ui;
+
+    QMutex m_DataMutex;
 
     QVector<PlayEntry> m_PlayEntries;
 
