@@ -3,11 +3,9 @@
 
 #include <QMainWindow>
 #include <QVector>
-#include  <QSignalMapper>
-#include <QHash>
 #include <QMutex>
+#include <QProcess>
 
-class QProcess;
 class QTimer;
 class QObject;
 
@@ -43,6 +41,8 @@ private slots:
     void refreshStatus();
 
     void cellDeleteClicked();
+    void cellPlayClicked();
+
 private:
     Ui::MainWindow *ui;
 
@@ -54,15 +54,10 @@ private:
 
     unsigned m_NextPortNr;
 
-    //Maps to map button to sopchan..
-    QHash <QObject*, int> m_DeleteMap;
-    QHash <QObject*, int> m_PlayMap;
-
     void updateBuffStatus(int connectionId);
     void refreshBufferStatusses();
 
-
-
+    QProcess m_PlayerProces;
 
 };
 

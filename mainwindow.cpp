@@ -90,7 +90,6 @@ void MainWindow::on_pushButton_clicked()
     QTableWidgetItem *itemSopLink = new QTableWidgetItem();
     QTableWidgetItem *itemStatus = new QTableWidgetItem();
     QTableWidgetItem *itemPort = new QTableWidgetItem();
-    QTableWidgetItem *itemPlay = new QTableWidgetItem();
 
     itemName->setText(entry.m_Name);
     itemSopLink->setText(entry.m_Soplink);
@@ -105,21 +104,23 @@ void MainWindow::on_pushButton_clicked()
 
     itemPort->setText( QString::number(m_NextPortNr) );
 
-    QIcon* icon = new QIcon(":/icons/delete.png");
-    //itemDelete->setIcon(*icon);
-    QPushButton* button = new QPushButton("Delete", ui->tableInfo);
-    button->setIcon(*icon);
+    QPushButton* buttonPlay = new QPushButton("Play", ui->tableInfo);
+    buttonPlay->setIcon( QIcon(":/icons/play.png") );
 
-    connect(button, SIGNAL(clicked()), this, SLOT(cellDeleteClicked()));
-    m_DeleteMap.insert(button, row);
+    connect(buttonPlay, SIGNAL(clicked()), this, SLOT(cellPlayClicked()));
+
+    QPushButton* buttonDelete = new QPushButton("Delete", ui->tableInfo);
+    buttonDelete->setIcon( QIcon(":/icons/delete.png") );
+
+    connect(buttonDelete, SIGNAL(clicked()), this, SLOT(cellDeleteClicked()));
 
     ui->tableInfo->setItem(row, colName , itemName);
     ui->tableInfo->setItem(row, colSopLink , itemSopLink);
     ui->tableInfo->setItem(row, colStatus , itemStatus);
     ui->tableInfo->setCellWidget(row, colBuffer , pgbar);
     ui->tableInfo->setItem(row, colPortNr , itemPort);
-    ui->tableInfo->setItem(row, colPlay , itemPlay);
-    ui->tableInfo->setCellWidget(row, colDelete , button);
+    ui->tableInfo->setCellWidget(row, colPlay , buttonPlay);
+    ui->tableInfo->setCellWidget(row, colDelete , buttonDelete);
 
 
     m_NextPortNr += 2;//increment by 2
@@ -129,28 +130,6 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::on_sopcast_exited(int exitStatus)
 {
-    //QString msg = QString("App finished exit code: ") + QString::number(exitStatus);
-    //ui->label->setText(msg);
-
-    //need to find it and remove it..by state?
-    QVector<QProcess *>::iterator it;
-#if 0
-    it = m_SopCastProcesses.begin();
-    while( it != m_SopCastProcesses.end() )
-    {
-        if ((*it)->state() == QProcess::NotRunning)
-        {
-            //remove it + cleanup
-            QProcess* stoppedSopClientProcess = *it;
-            m_SopCastProcesses.erase(it);
-            stoppedSopClientProcess->deleteLater(); //can't call delte from slot from signal from obj
-            it = m_SopCastProcesses.begin();
-        }
-        else
-            it++;
-    }
-#endif
-
     m_DataMutex.lock();
     for(int i=0; i<m_PlayEntries.size(); i++)
     {
@@ -260,11 +239,6 @@ void MainWindow::updateBuffStatus(int connectionId)
 
 void MainWindow::cellDeleteClicked()
 {
-#if 0
-    if (m_DeleteMap.contains(sender()))
-        QMessageBox::warning(0,"Delete", QString::number(m_DeleteMap[sender()]));
-#endif
-
     QMutexLocker ml(&m_DataMutex);
 
     for(int index=0; index<m_PlayEntries.size(); index++)
@@ -291,6 +265,31 @@ void MainWindow::cellDeleteClicked()
             break;
         }
     }
-
 }
 
+
+void MainWindow::cellPlayClicked()
+{
+    QMutexLocker ml(&m_DataMutex);
+
+    for(int index=0; index<m_PlayEntries.size(); index++)
+    {
+        if (ui->tableInfo->cellWidget(index, colPlay) == sender())
+        {
+            //found our button
+            if (m_PlayerProces.state() != QProcess::NotRunning)
+            {
+                //still running, kill it
+                m_PlayerProces.terminate();
+                if (!m_PlayerProces.waitForFinished(500))
+                    m_PlayerProces.kill();
+            }
+
+            QString program = QString("vlc http://127.0.0.1:%1/tv.asf").arg(m_PlayEntries[index].m_OutboundPort);
+
+            m_PlayerProces.start(program);
+
+            break;
+        }
+    }
+}
